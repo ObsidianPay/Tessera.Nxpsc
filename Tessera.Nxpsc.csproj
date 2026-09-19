@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!--
+    The libnxpsc distribution lives in vendor/libnxpsc and its shared library is
+    copied next to the tool. tessera_mockcard (the tests and the mock card option) is built by
+    native/ from the external/libnxpsc submodule. See docs/building-libnxpsc.md.
+  -->
+  <ItemGroup>
+    <None Include="..\vendor\libnxpsc\nxpsc.dll" Link="nxpsc.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\vendor\libnxpsc\nxpsc.dll')" />
+    <None Include="..\vendor\libnxpsc\libnxpsc.so" Link="libnxpsc.so" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\vendor\libnxpsc\libnxpsc.so')" />
+    <None Include="..\native\build\tessera_mockcard.dll" Link="tessera_mockcard.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\native\build\tessera_mockcard.dll')" />
+    <None Include="..\native\build\tessera_mockcard.so" Link="tessera_mockcard.so" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\native\build\tessera_mockcard.so')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PCSC" Version="7.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tessera.Tests" />
+  </ItemGroup>
+
+</Project>
