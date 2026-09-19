@@ -1,0 +1,3 @@
+[submodule "external/libnxpsc"]
+	path = external/libnxpsc
+	url = https://github.com/ObsidianPay/libnxpsc

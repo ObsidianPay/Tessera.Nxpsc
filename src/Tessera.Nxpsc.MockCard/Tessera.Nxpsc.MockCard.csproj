@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Tessera.Nxpsc.MockCard</PackageId>
+    <Description>libnxpsc's mock card with state, for testing Tessera.Nxpsc code without hardware: real framing and real card-side crypto. For tests only: loading it fixes libnxpsc's RNG for the process, and Tessera.Nxpsc then refuses real cards.</Description>
+    <PackageTags>$(PackageTags);testing;mock</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tessera.Nxpsc\Tessera.Nxpsc.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(LocalNativeDir)/nxpsc_mockcard.dll" Link="nxpsc_mockcard.dll" CopyToOutputDirectory="PreserveNewest" Pack="false" Condition="Exists('$(LocalNativeDir)/nxpsc_mockcard.dll')" />
+    <None Include="$(LocalNativeDir)/nxpsc_mockcard.so" Link="nxpsc_mockcard.so" CopyToOutputDirectory="PreserveNewest" Pack="false" Condition="Exists('$(LocalNativeDir)/nxpsc_mockcard.so')" />
+    <None Include="$(LocalNativeDir)/nxpsc_mockcard.dylib" Link="nxpsc_mockcard.dylib" CopyToOutputDirectory="PreserveNewest" Pack="false" Condition="Exists('$(LocalNativeDir)/nxpsc_mockcard.dylib')" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(NativeRuntimesDir)' != ''">
+    <None Include="$(NativeRuntimesDir)/*/native/nxpsc_mockcard.*"
+          Pack="true" PackagePath="runtimes/" Visible="false" />
+  </ItemGroup>
+
+</Project>

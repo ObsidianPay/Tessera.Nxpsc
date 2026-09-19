@@ -5,23 +5,32 @@ namespace Tessera.Nxpsc.Native;
 
 /// <summary>
 /// Where the native libraries come from. TESSERA_NXPSC_DIR, when set, wins;
-/// otherwise the default probing applies (the tool's own directory, where the
-/// build copies them, then the system search path).
+/// otherwise the default probing applies: the package's runtimes/&lt;rid&gt;/native,
+/// the application directory, then the system search path.
 /// </summary>
 internal static class NativeLibraryResolver
 {
     public const string DirectoryVariable = "TESSERA_NXPSC_DIR";
 
-    private static int _registered;
+    private static readonly HashSet<Assembly> Registered = [];
 
     /// <summary>
-    /// Idempotent. Called from the static constructors of NxpscCard and MockCard,
-    /// the only types that P/Invoke, so it runs before the first native call.
+    /// Idempotent. Called from the static constructors of the types that
+    /// P/Invoke, so it runs before the first native call.
     /// </summary>
-    public static void EnsureRegistered()
+    public static void EnsureRegistered() => Register(typeof(NativeLibraryResolver).Assembly);
+
+    /// <summary>
+    /// Resolvers are per assembly; an assembly with its own [DllImport]s (the
+    /// mock card) registers itself here.
+    /// </summary>
+    public static void Register(Assembly assembly)
     {
-        if (Interlocked.Exchange(ref _registered, 1) == 0)
-            NativeLibrary.SetDllImportResolver(typeof(NativeLibraryResolver).Assembly, Resolve);
+        lock (Registered)
+        {
+            if (Registered.Add(assembly))
+                NativeLibrary.SetDllImportResolver(assembly, Resolve);
+        }
     }
 
     private static nint Resolve(string name, Assembly assembly, DllImportSearchPath? searchPath)

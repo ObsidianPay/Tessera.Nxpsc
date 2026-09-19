@@ -1,0 +1,150 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # libnxpsc (from the submodule) and the mock card, built and tested per platform
+  native:
+    name: ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-latest
+            rid: osx-arm64
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Build native
+        shell: bash
+        run: |
+          cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build native/build --config Release
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+
+      # includes the struct layout check against native/layout_probe.c and the
+      # check that every nxpsc.h function is exported by the library just built
+      - name: Test
+        run: dotnet test Tessera.Nxpsc.sln --configuration Release --logger "console;verbosity=normal"
+
+      - name: Stage runtime files
+        shell: bash
+        run: |
+          stage="stage/${{ matrix.rid }}/native"
+          mkdir -p "$stage"
+          for f in nxpsc.dll libnxpsc.so libnxpsc.dylib nxpsc_mockcard.dll nxpsc_mockcard.so nxpsc_mockcard.dylib; do
+            # -L: libnxpsc.so and libnxpsc.dylib are symlinks to the versioned file
+            if [ -e "native/build/out/$f" ]; then cp -L "native/build/out/$f" "$stage/"; fi
+          done
+          ls -l "$stage"
+          test "$(ls "$stage" | wc -l)" -eq 2
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: runtimes-${{ matrix.rid }}
+          path: stage/
+          if-no-files-found: error
+
+  pack:
+    needs: native
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: runtimes-*
+          path: runtimes
+          merge-multiple: true
+
+      - name: Version
+        id: version
+        shell: bash
+        run: |
+          prefix="$(dotnet msbuild src/Tessera.Nxpsc/Tessera.Nxpsc.csproj -getProperty:VersionPrefix)"
+          case "$GITHUB_REF" in
+            refs/tags/v*)  version="${GITHUB_REF#refs/tags/v}" ;;
+            refs/heads/master) version="$prefix-ci.$GITHUB_RUN_NUMBER" ;;
+            *)             version="$prefix-pr.$GITHUB_RUN_NUMBER" ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Packing $version"
+
+      - name: Pack
+        run: >
+          dotnet pack Tessera.Nxpsc.sln --configuration Release --output packages
+          -p:Version=${{ steps.version.outputs.version }}
+          -p:NativeRuntimesDir=${{ github.workspace }}/runtimes
+          -p:ContinuousIntegrationBuild=true
+
+      - name: Check package contents
+        shell: bash
+        run: |
+          main="packages/Tessera.Nxpsc.${{ steps.version.outputs.version }}.nupkg"
+          mock="packages/Tessera.Nxpsc.MockCard.${{ steps.version.outputs.version }}.nupkg"
+          for f in runtimes/win-x64/native/nxpsc.dll runtimes/linux-x64/native/libnxpsc.so runtimes/osx-arm64/native/libnxpsc.dylib \
+                   lib/net8.0/Tessera.Nxpsc.dll LICENSE README.md; do
+            unzip -l "$main" | grep -q " $f\$" || { echo "::error::$f missing from $main"; exit 1; }
+          done
+          for f in runtimes/win-x64/native/nxpsc_mockcard.dll runtimes/linux-x64/native/nxpsc_mockcard.so \
+                   runtimes/osx-arm64/native/nxpsc_mockcard.dylib lib/net8.0/Tessera.Nxpsc.MockCard.dll; do
+            unzip -l "$mock" | grep -q " $f\$" || { echo "::error::$f missing from $mock"; exit 1; }
+          done
+          if unzip -l "$main" | grep -q nxpsc_mockcard; then echo "::error::the mock card leaked into $main"; exit 1; fi
+          unzip -l "$main"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: packages
+          path: packages/*.nupkg
+          if-no-files-found: error
+
+  publish:
+    needs: pack
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: packages
+          path: packages
+
+      - name: Push to GitHub Packages
+        run: >
+          dotnet nuget push "packages/*.nupkg"
+          --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+          --api-key "${{ secrets.GITHUB_TOKEN }}"
+          --skip-duplicate

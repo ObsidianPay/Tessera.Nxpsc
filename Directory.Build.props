@@ -1,0 +1,39 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- CI passes -p:Version=...; local builds are 0.0.0-dev -->
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
+
+    <Authors>ObsidianPay</Authors>
+    <Copyright>Tessera.Nxpsc contributors</Copyright>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/ObsidianPay/Tessera.Nxpsc</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/ObsidianPay/Tessera.Nxpsc</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>nfc;mifare;desfire;ntag424;mifare-plus;libnxpsc;pcsc</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!--
+      Native binaries. Local builds take them flat from native/build/out (see
+      README). Packing takes them from $(NativeRuntimesDir)/<rid>/native, which
+      CI fills with every platform's build.
+    -->
+    <LocalNativeDir>$(MSBuildThisFileDirectory)native/build/out</LocalNativeDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
+
+</Project>

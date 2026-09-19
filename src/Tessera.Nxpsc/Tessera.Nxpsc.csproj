@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Tessera.Nxpsc</PackageId>
+    <Description>.NET binding for libnxpsc: MIFARE DESFire (EV1/EV2/EV3, Light), NTAG 413/424 DNA and MIFARE Plus programming, with a PC/SC transport. Ships libnxpsc's native library for win-x64, linux-x64 and osx-arm64.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PCSC" Version="7.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tessera.Nxpsc.MockCard" />
+    <InternalsVisibleTo Include="Tessera.Nxpsc.Tests" />
+  </ItemGroup>
+
+  <!-- local build: libnxpsc next to the assembly -->
+  <ItemGroup>
+    <None Include="$(LocalNativeDir)/nxpsc.dll" Link="nxpsc.dll" CopyToOutputDirectory="PreserveNewest" Pack="false" Condition="Exists('$(LocalNativeDir)/nxpsc.dll')" />
+    <None Include="$(LocalNativeDir)/libnxpsc.so" Link="libnxpsc.so" CopyToOutputDirectory="PreserveNewest" Pack="false" Condition="Exists('$(LocalNativeDir)/libnxpsc.so')" />
+    <None Include="$(LocalNativeDir)/libnxpsc.dylib" Link="libnxpsc.dylib" CopyToOutputDirectory="PreserveNewest" Pack="false" Condition="Exists('$(LocalNativeDir)/libnxpsc.dylib')" />
+  </ItemGroup>
+
+  <!-- package: runtimes/<rid>/native/ -->
+  <ItemGroup Condition="'$(NativeRuntimesDir)' != ''">
+    <None Include="$(NativeRuntimesDir)/*/native/nxpsc.dll;$(NativeRuntimesDir)/*/native/libnxpsc.so;$(NativeRuntimesDir)/*/native/libnxpsc.dylib"
+          Pack="true" PackagePath="runtimes/" Visible="false" />
+  </ItemGroup>
+
+</Project>

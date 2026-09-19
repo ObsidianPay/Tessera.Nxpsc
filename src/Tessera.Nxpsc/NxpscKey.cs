@@ -58,6 +58,16 @@ public sealed class NxpscKey : IDisposable
         }
     }
 
+    /// <summary>
+    /// Same type and same bytes, compared in constant time. The version is not
+    /// part of the key material and is not compared.
+    /// </summary>
+    public bool FixedTimeEquals(NxpscKey other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return Type == other.Type && CryptographicOperations.FixedTimeEquals(Bytes, other.Bytes);
+    }
+
     /// <summary>An independent copy (its own pinned buffer, its own lifetime).</summary>
     public NxpscKey Copy() => new(Type, Bytes, Version);
 
