@@ -238,6 +238,9 @@ internal static unsafe class NxpscNative
     public static extern int nxpsc_commit_transaction(nint card);
 
     [DllImport(Library, CallingConvention = Cdecl, ExactSpelling = true)]
+    public static extern int nxpsc_commit_transaction_tmac(nint card, byte* tmc, byte* tmv);
+
+    [DllImport(Library, CallingConvention = Cdecl, ExactSpelling = true)]
     public static extern int nxpsc_abort_transaction(nint card);
 
     [DllImport(Library, CallingConvention = Cdecl, ExactSpelling = true)]
@@ -255,6 +258,14 @@ internal static unsafe class NxpscNative
     [DllImport(Library, CallingConvention = Cdecl, ExactSpelling = true)]
     public static extern int nxpsc_create_transaction_mac_file(nint card, byte fileNo, int comm, NativeAccess* access,
         NativeKey* tmKey, byte keyVersion);
+
+    [DllImport(Library, CallingConvention = Cdecl, ExactSpelling = true)]
+    public static extern int nxpsc_tmac_compute(NativeKey* tmKey, byte* uid, nuint uidLen, byte* tmc,
+        byte* tmi, nuint tmiLen, byte* tmv);
+
+    [DllImport(Library, CallingConvention = Cdecl, ExactSpelling = true)]
+    public static extern int nxpsc_tmac_tmi_write_record(byte fileNo, uint offset, byte* data, nuint dataLen,
+        byte* tmi, nuint cap, nuint* tmiLen);
 
     [DllImport(Library, CallingConvention = Cdecl, ExactSpelling = true)]
     public static extern int nxpsc_create_delegated_application(nint card, uint aid, ushort damSlot, byte damSlotVersion,

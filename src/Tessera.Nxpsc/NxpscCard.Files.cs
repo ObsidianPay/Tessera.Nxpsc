@@ -120,6 +120,21 @@ public sealed unsafe partial class NxpscCard
 
     public void CommitTransaction() => Check(NxpscNative.nxpsc_commit_transaction(Handle));
 
+    /// <summary>
+    /// CommitTransaction asking for the transaction MAC (option 0x01): the card
+    /// answers with its counter and the MAC it computed over the transaction.
+    /// The application must hold a transaction MAC file, or the card rejects it.
+    /// </summary>
+    public TransactionMac CommitTransactionWithMac()
+    {
+        var tmc = new byte[4];
+        var tmv = new byte[8];
+        fixed (byte* c = tmc)
+        fixed (byte* v = tmv)
+            Check(NxpscNative.nxpsc_commit_transaction_tmac(Handle, c, v));
+        return new TransactionMac(tmc, tmv);
+    }
+
     public void AbortTransaction() => Check(NxpscNative.nxpsc_abort_transaction(Handle));
 
     /// <summary>

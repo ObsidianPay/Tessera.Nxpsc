@@ -75,6 +75,25 @@ public sealed unsafe class MockCard : ICardTransport
             return mockcard_key_equals(Handle, aid, keyNo, p, (nuint)key.Bytes.Length) == 1;
     }
 
+    /// <summary>
+    /// The AppTransactionMACKey the card computes its transaction MAC with. A
+    /// real card is told it inside CreateTransactionMACFile, enciphered; the
+    /// mock does not decipher command data, so it is stated here. The file
+    /// still has to be created on the card before a commit returns a MAC.
+    /// </summary>
+    public void SetTransactionMacKey(NxpscKey key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        fixed (byte* p = key.Bytes)
+        {
+            if (mockcard_set_transaction_mac_key(Handle, p, (nuint)key.Bytes.Length) != 0)
+                throw new ArgumentException("The transaction MAC key must be AES-128.", nameof(key));
+        }
+    }
+
+    /// <summary>The counter the card reported for its last committed transaction.</summary>
+    public uint TransactionCounter => mockcard_transaction_counter(Handle);
+
     public void SetSignature(ReadOnlySpan<byte> signature)
     {
         fixed (byte* p = signature)
@@ -145,6 +164,12 @@ public sealed unsafe class MockCard : ICardTransport
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     private static extern void mockcard_set_signature(nint mock, byte* sig, nuint len);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    private static extern int mockcard_set_transaction_mac_key(nint mock, byte* key, nuint keyLen);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    private static extern uint mockcard_transaction_counter(nint mock);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     private static extern void mockcard_tear_on(nint mock, byte nativeCmd, [MarshalAs(UnmanagedType.U1)] bool afterExecute);

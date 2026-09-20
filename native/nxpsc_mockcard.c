@@ -226,6 +226,24 @@ MOCKCARD_API int mockcard_key_equals(mockcard_t *t, uint32_t aid, uint8_t key_no
     return memcmp(app->key[key_no], key, key_len) == 0 ? 1 : 0;
 }
 
+// The AppTransactionMACKey reaches a real card enciphered inside
+// CreateTransactionMACFile. The mock does not decipher command data, so the
+// caller states the key here and the card side uses it to compute the
+// transaction MAC; the file itself still has to be created on the card.
+MOCKCARD_API int mockcard_set_transaction_mac_key(mockcard_t *t, const uint8_t *key, size_t len) {
+    if (t == NULL || key == NULL || len != sizeof(t->mock.tm_key)) {
+        return NXPSC_E_PARAM;
+    }
+    memcpy(t->mock.tm_key, key, len);
+    return NXPSC_OK;
+}
+
+// How many transactions the card has committed, i.e. the counter it reported
+// last. Zero until the transaction MAC file exists and a commit has happened
+MOCKCARD_API uint32_t mockcard_transaction_counter(const mockcard_t *t) {
+    return (t == NULL) ? 0 : t->mock.tmc;
+}
+
 MOCKCARD_API void mockcard_set_signature(mockcard_t *t, const uint8_t *sig, size_t len) {
     t->has_signature = (sig != NULL && len == sizeof(t->signature));
     if (t->has_signature) {

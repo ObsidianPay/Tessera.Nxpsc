@@ -1,6 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <!--
+      The libraries target net8.0, so they load into anything from .NET 8 up.
+      The tests run on both .NET 8 and .NET 10 because ObsidianCore is on .NET
+      10 and loads this binding: P/Invoke marshalling and the native library
+      resolver are runtime behaviour, not compile time, so a green .NET 8 run
+      says nothing about .NET 10.
+    -->
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <TargetFramework></TargetFramework>
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>

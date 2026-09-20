@@ -41,9 +41,13 @@ jobs:
           cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release
           cmake --build native/build --config Release
 
+      # the tests run against both runtimes: net8.0 is what the package targets,
+      # net10.0 is what ObsidianCore loads it into
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       # includes the struct layout check against native/layout_probe.c and the
       # check that every nxpsc.h function is exported by the library just built
