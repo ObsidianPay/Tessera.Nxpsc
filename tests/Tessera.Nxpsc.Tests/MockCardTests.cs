@@ -54,6 +54,50 @@ public class MockCardTests
         Assert.True(card.IsAuthenticated);
     }
 
+    /// <summary>
+    /// The card describes itself from what was created on it, not from a
+    /// fixture: an application's settings, its key count and its key versions
+    /// are the ones that were asked for.
+    /// </summary>
+    [Fact]
+    public void The_card_describes_the_application_it_was_given()
+    {
+        using var mock = new MockCard(NxpscCardType.DesfireEv3, Uid);
+        using var newKey = new NxpscKey(NxpscKeyType.Aes128, Convert.FromHexString("00112233445566778899AABBCCDDEEFF"), 7);
+        mock.SetChangeKeyResult(newKey);
+
+        using var card = NxpscCard.Open(mock);
+        card.GetVersion();
+        card.Identify();
+        using (var picc = NxpscKey.FactoryPiccMasterKey())
+        {
+            card.SelectApplication(0);
+            card.Authenticate(0, picc);
+        }
+        card.CreateApplication(Aid, 0x0B, 6, NxpscKeyType.Aes128);
+        Assert.Equal([Aid], card.GetApplicationIds());
+
+        card.SelectApplication(Aid);
+        var settings = card.GetKeySettings();
+        Assert.Equal(0x0B, settings.Settings);
+        Assert.Equal(6, settings.NumKeys);
+        Assert.Equal(NxpscKeyType.Aes128, settings.KeyType);
+
+        // every key starts at the factory version, and takes the new key's
+        // version once it has been changed
+        Assert.Equal(0, card.GetKeyVersion(0));
+        using (var factory = NxpscKey.FactoryAesApplicationKey())
+        {
+            card.Authenticate(0, factory);
+            card.ChangeKey(0, factory, newKey);
+        }
+        card.SelectApplication(Aid);
+        Assert.Equal(7, card.GetKeyVersion(0));
+
+        // a key the application does not have is an error, not a number
+        Assert.Throws<NxpscException>(() => card.GetKeyVersion(9));
+    }
+
     [Fact]
     public void A_wrong_key_fails_authentication()
     {
@@ -90,8 +134,11 @@ public class MockCardTests
         Assert.Equal(signature, card.GetSignature());
         Assert.True(card.GetFreeMemory() > 0);
 
-        card.SelectApplication(0);
-        Assert.NotEmpty(card.GetApplicationIds());
+        // the card answers about what it holds, so give it an application
+        card.CreateApplication(Aid, 0x0B, 3, NxpscKeyType.Aes128);
+        Assert.Equal([Aid], card.GetApplicationIds());
+
+        card.SelectApplication(Aid);
         var settings = card.GetKeySettings();
         Assert.InRange(settings.NumKeys, 1, 14);
         _ = card.GetKeyVersion(0);

@@ -63,11 +63,11 @@ public sealed unsafe class MockCard : ICardTransport
     public void SetChangeKeyResult(NxpscKey key)
     {
         fixed (byte* p = key.Bytes)
-            mockcard_set_change_key_result(Handle, true, (int)key.Type, p, (nuint)key.Bytes.Length);
+            mockcard_set_change_key_result(Handle, true, (int)key.Type, p, (nuint)key.Bytes.Length, key.Version);
     }
 
     /// <summary>The card acknowledges ChangeKey and silently keeps the old key.</summary>
-    public void SetChangeKeyIgnored() => mockcard_set_change_key_result(Handle, false, 0, null, 0);
+    public void SetChangeKeyIgnored() => mockcard_set_change_key_result(Handle, false, 0, null, 0, 0);
 
     public bool KeyEquals(uint aid, byte keyNo, NxpscKey key)
     {
@@ -189,7 +189,7 @@ public sealed unsafe class MockCard : ICardTransport
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     private static extern void mockcard_set_change_key_result(nint mock, [MarshalAs(UnmanagedType.U1)] bool takes,
-        int keyType, byte* key, nuint keyLen);
+        int keyType, byte* key, nuint keyLen, byte keyVersion);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     private static extern int mockcard_key_equals(nint mock, uint aid, byte keyNo, byte* key, nuint keyLen);

@@ -9,7 +9,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
     <!-- CI passes -p:Version=...; local builds are 0.0.0-dev -->
-    <VersionPrefix>0.3.1</VersionPrefix>
+    <VersionPrefix>0.4.0</VersionPrefix>
     <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
 
     <Authors>ObsidianPay</Authors>

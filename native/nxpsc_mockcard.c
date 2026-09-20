@@ -197,7 +197,19 @@ MOCKCARD_API int mockcard_add_application(mockcard_t *t, uint32_t aid, int key_t
     if (find_app(t, aid) != NULL) {
         return NXPSC_E_PARAM;
     }
-    return add_app(t, aid, (nxpsc_keytype_t)key_type, num_keys) ? NXPSC_OK : NXPSC_E_MEMORY;
+    if (add_app(t, aid, (nxpsc_keytype_t)key_type, num_keys) == NULL) {
+        return NXPSC_E_MEMORY;
+    }
+    if (aid != 0x000000 && t->mock.app_count < MOCK_MAX_APPS) {
+        mock_app_t *app = &t->mock.apps[t->mock.app_count++];
+        memset(app, 0, sizeof(*app));
+        app->present = true;
+        app->aid = aid;
+        app->key_settings = 0x0B;
+        app->num_keys = num_keys;
+        app->key_type = (uint8_t)key_type;
+    }
+    return NXPSC_OK;
 }
 
 MOCKCARD_API bool mockcard_has_application(mockcard_t *t, uint32_t aid) {
@@ -207,13 +219,15 @@ MOCKCARD_API bool mockcard_has_application(mockcard_t *t, uint32_t aid) {
 // what a key reads as after a successful ChangeKey. takes == false models a
 // card that acknowledges ChangeKey and keeps the old key
 MOCKCARD_API void mockcard_set_change_key_result(mockcard_t *t, bool takes, int key_type,
-                                           const uint8_t *key, size_t key_len) {
+                                           const uint8_t *key, size_t key_len, uint8_t key_version) {
     t->change_takes = takes;
     t->change_type = (nxpsc_keytype_t)key_type;
     memset(t->change_key, 0, sizeof(t->change_key));
     if (key != NULL && key_len <= sizeof(t->change_key)) {
         memcpy(t->change_key, key, key_len);
     }
+    // the version travels inside the cryptogram, so the card side is told it
+    t->mock.change_key_version = key_version;
 }
 
 // 1 when the key equals the one given, 0 when it differs, negative when absent
