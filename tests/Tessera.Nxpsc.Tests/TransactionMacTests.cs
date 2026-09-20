@@ -148,6 +148,58 @@ public class TransactionMacTests
         Assert.Throws<NxpscException>(() => NxpscTmac.Compute(tmKey, Uid, new byte[4], new byte[8]));
     }
 
+    /// <summary>
+    /// A caller that reads its own file settings back gets what it asked for,
+    /// which is the only way a personalisation station can catch a wrong access
+    /// nibble before the card leaves the bench.
+    /// </summary>
+    [Fact]
+    public void Files_are_reported_as_they_were_created()
+    {
+        using var mock = new MockCard(NxpscCardType.DesfireEv3, Uid);
+        using var appKey = new NxpscKey(NxpscKeyType.Aes128, Convert.FromHexString("00112233445566778899AABBCCDDEEFF"), 1);
+        using var tmKey = new NxpscKey(NxpscKeyType.Aes128, Convert.FromHexString("A0A1A2A3A4A5A6A7A8A9AAABACADAEAF"), 1);
+        mock.SetTransactionMacFileSettings(TmacFile, NxpscCommMode.Mac, new NxpscAccessRights(2, 0x0F, 0x0F, 0));
+        using var card = Ready(mock, appKey, tmKey);
+
+        var access = new NxpscAccessRights(2, 2, 2, 0);
+        card.CreateRecordFile(RecordFile, cyclic: true, NxpscCommMode.Mac, access, 32, 4);
+
+        Assert.Equal([RecordFile, TmacFile], card.GetFileIds().Order());
+
+        var record = card.GetFileSettings(RecordFile);
+        Assert.Equal(NxpscFileType.CyclicRecord, record.Type);
+        Assert.Equal(NxpscCommMode.Mac, record.CommMode);
+        Assert.Equal(access, record.Access);
+        Assert.Equal(32u, record.RecordSize);
+        Assert.Equal(4u, record.MaxRecords);
+
+        // the transaction MAC file's settings travel enciphered, so the mock is
+        // told them; on a card they are read off the silicon
+        var tmac = card.GetFileSettings(TmacFile);
+        Assert.Equal(NxpscFileType.TransactionMac, tmac.Type);
+        Assert.Equal(new NxpscAccessRights(2, 0x0F, 0x0F, 0), tmac.Access);
+    }
+
+    /// <summary>A card an earlier run already finished, files and all.</summary>
+    [Fact]
+    public void A_card_can_start_with_files_already_on_it()
+    {
+        using var mock = new MockCard(NxpscCardType.DesfireEv3, Uid);
+        mock.AddFile(RecordFile, NxpscFileType.CyclicRecord, NxpscCommMode.Mac,
+            new NxpscAccessRights(2, 2, 2, 0), recordSize: 32, maxRecords: 4);
+        mock.AddFile(TmacFile, NxpscFileType.TransactionMac, NxpscCommMode.Mac,
+            new NxpscAccessRights(2, 0x0F, 0x0F, 0));
+        mock.EnableTransactionMac();
+
+        using var card = NxpscCard.Open(mock);
+        card.GetVersion();
+        card.Identify();
+
+        Assert.Equal([RecordFile, TmacFile], card.GetFileIds().Order());
+        Assert.Equal(32u, card.GetFileSettings(RecordFile).RecordSize);
+    }
+
     [Fact]
     public void Without_a_transaction_mac_file_the_card_refuses_the_option()
     {

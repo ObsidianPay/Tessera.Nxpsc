@@ -94,6 +94,38 @@ public sealed unsafe class MockCard : ICardTransport
     /// <summary>The counter the card reported for its last committed transaction.</summary>
     public uint TransactionCounter => mockcard_transaction_counter(Handle);
 
+    /// <summary>
+    /// A file the card already holds, as if an earlier run had created it.
+    /// <paramref name="recordSize"/> and <paramref name="maxRecords"/> are for
+    /// record files, <paramref name="size"/> for data files.
+    /// </summary>
+    public void AddFile(byte fileNo, NxpscFileType type, NxpscCommMode comm, NxpscAccessRights access,
+        uint recordSize = 0, uint maxRecords = 0, uint size = 0)
+    {
+        if (mockcard_add_file(Handle, fileNo, (byte)type, (byte)comm, Pack(access), size, recordSize, maxRecords) != 0)
+            throw new ArgumentException($"Could not add file {fileNo:X2}.", nameof(fileNo));
+    }
+
+    /// <summary>
+    /// What the card reports for its transaction MAC file. Those settings reach
+    /// a real card inside CreateTransactionMACFile, enciphered, so the mock is
+    /// told them the same way it is told the key.
+    /// </summary>
+    public void SetTransactionMacFileSettings(byte fileNo, NxpscCommMode comm, NxpscAccessRights access)
+    {
+        if (mockcard_set_transaction_mac_file(Handle, fileNo, (byte)comm, Pack(access)) != 0)
+            throw new ArgumentException("Could not set the transaction MAC file settings.", nameof(fileNo));
+    }
+
+    /// <summary>
+    /// Switches the transaction MAC feature on without a CreateTransactionMACFile,
+    /// for a card an earlier run already finished.
+    /// </summary>
+    public void EnableTransactionMac() => mockcard_enable_transaction_mac(Handle);
+
+    private static ushort Pack(NxpscAccessRights a) => (ushort)(
+        ((a.Read & 0x0F) << 12) | ((a.Write & 0x0F) << 8) | ((a.ReadWrite & 0x0F) << 4) | (a.Change & 0x0F));
+
     public void SetSignature(ReadOnlySpan<byte> signature)
     {
         fixed (byte* p = signature)
@@ -170,6 +202,16 @@ public sealed unsafe class MockCard : ICardTransport
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     private static extern uint mockcard_transaction_counter(nint mock);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    private static extern int mockcard_add_file(nint mock, byte fileNo, byte type, byte comm, ushort access,
+        uint size, uint recordSize, uint maxRecords);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    private static extern int mockcard_set_transaction_mac_file(nint mock, byte fileNo, byte comm, ushort access);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    private static extern void mockcard_enable_transaction_mac(nint mock);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     private static extern void mockcard_tear_on(nint mock, byte nativeCmd, [MarshalAs(UnmanagedType.U1)] bool afterExecute);

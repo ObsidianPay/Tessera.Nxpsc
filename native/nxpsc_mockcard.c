@@ -244,6 +244,57 @@ MOCKCARD_API uint32_t mockcard_transaction_counter(const mockcard_t *t) {
     return (t == NULL) ? 0 : t->mock.tmc;
 }
 
+// A file the card already holds, as if an earlier run had created it. type is
+// nxpsc_filetype_t, access is packed as on the wire (read, write, read/write,
+// change, four bits each, most significant first)
+MOCKCARD_API int mockcard_add_file(mockcard_t *t, uint8_t file_no, uint8_t type, uint8_t comm,
+                                   uint16_t access, uint32_t size, uint32_t record_size,
+                                   uint32_t max_records) {
+    if (t == NULL) {
+        return NXPSC_E_PARAM;
+    }
+    for (size_t i = 0; i < t->mock.file_count; i++) {
+        if (t->mock.files[i].file_no == file_no) {
+            return NXPSC_E_PARAM;      // already there
+        }
+    }
+    if (t->mock.file_count >= MOCK_MAX_FILES) {
+        return NXPSC_E_MEMORY;
+    }
+
+    mock_file_t *file = &t->mock.files[t->mock.file_count++];
+    memset(file, 0, sizeof(*file));
+    file->file_no = file_no;
+    file->type = type;
+    file->comm = comm;
+    file->access = access;
+    file->size = size;
+    file->record_size = record_size;
+    file->max_records = max_records;
+    return NXPSC_OK;
+}
+
+// What the card reports for its transaction MAC file. Its settings reach a real
+// card inside CreateTransactionMACFile, enciphered, so the mock is told them
+MOCKCARD_API int mockcard_set_transaction_mac_file(mockcard_t *t, uint8_t file_no, uint8_t comm,
+                                                   uint16_t access) {
+    if (t == NULL) {
+        return NXPSC_E_PARAM;
+    }
+    t->mock.tm_file_no = file_no;
+    t->mock.tm_file_comm = comm;
+    t->mock.tm_file_access = access;
+    return NXPSC_OK;
+}
+
+// The transaction MAC feature is on, as it would be on a card whose file an
+// earlier run created
+MOCKCARD_API void mockcard_enable_transaction_mac(mockcard_t *t) {
+    if (t != NULL) {
+        t->mock.tm_file = true;
+    }
+}
+
 MOCKCARD_API void mockcard_set_signature(mockcard_t *t, const uint8_t *sig, size_t len) {
     t->has_signature = (sig != NULL && len == sizeof(t->signature));
     if (t->has_signature) {
