@@ -102,6 +102,20 @@ Two things to know:
   `SetChangeKeyResult` to state what the changed key reads as. Proving a key
   change takes real hardware.
 
+Error statuses are part of what the mock can get wrong. The ones libnxpsc's mock
+returns are listed, with which a card has confirmed, in libnxpsc's
+[hardware notes](https://github.com/ObsidianPay/libnxpsc/blob/master/docs/hardware-notes.md#statuses-the-mock-card-returns).
+The shim adds four of its own:
+
+| Status | When the shim returns it | Seen on a card? |
+|---|---|---|
+| `0xA0` application not found | SelectApplication of an AID the card does not hold | yes |
+| `0x7E` length error | SelectApplication or CreateApplication too short to parse | yes, as the card's length error generally |
+| `0x40` no such key | authentication with a key number the application does not have | not yet |
+| `0xDE` duplicate | CreateApplication of an AID the card already holds | not yet |
+
+When a hardware run passes through a "not yet" path, record what the card said.
+
 ## Build from source
 
 ```
