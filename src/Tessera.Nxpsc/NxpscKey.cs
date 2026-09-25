@@ -5,8 +5,9 @@ namespace Tessera.Nxpsc;
 /// <summary>
 /// Key material handed to libnxpsc. The bytes live in a pinned array (so the GC
 /// never leaves a stray copy behind when it compacts) and are zeroed on
-/// dispose. There is deliberately no ToString, no hex accessor, and no way to
-/// read the bytes back out: nothing that could end up in a log.
+/// dispose. There is deliberately no ToString and no hex accessor: nothing that
+/// could end up in a log. The one way to read the bytes back out is
+/// <see cref="ExportTo"/>, into a buffer the caller owns.
 /// </summary>
 public sealed class NxpscKey : IDisposable
 {
@@ -70,6 +71,23 @@ public sealed class NxpscKey : IDisposable
 
     /// <summary>An independent copy (its own pinned buffer, its own lifetime).</summary>
     public NxpscKey Copy() => new(Type, Bytes, Version);
+
+    /// <summary>
+    /// Copies the key bytes into <paramref name="destination"/>, which must hold
+    /// at least <see cref="SizeOf"/> bytes. This exists for a key server that
+    /// derives one card's key and hands it to the one party entitled to it,
+    /// over an authenticated channel — the shape a SAM has in derivation mode.
+    /// The copy is the caller's: send it, then zero it with
+    /// <c>CryptographicOperations.ZeroMemory</c>, and never format it into a
+    /// string that could reach a log.
+    /// </summary>
+    public void ExportTo(Span<byte> destination)
+    {
+        var bytes = Bytes;
+        if (destination.Length < bytes.Length)
+            throw new ArgumentException($"A {Type} key needs {bytes.Length} bytes.", nameof(destination));
+        bytes.CopyTo(destination);
+    }
 
     public override string ToString() => $"{Type} key (version {Version})";
 

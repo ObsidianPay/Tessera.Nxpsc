@@ -50,6 +50,7 @@ public class TransactionMacTests
         // ReadWrite 0x0F: CommitReaderID stays disabled
         card.CreateTransactionMacFile(TmacFile, NxpscCommMode.Mac,
             new NxpscAccessRights(2, 0x0F, 0x0F, 0), tmKey, 1);
+        card.CreateRecordFile(RecordFile, cyclic: true, NxpscCommMode.Mac, new NxpscAccessRights(2, 2, 2, 0), 32, 4);
         return card;
     }
 
@@ -163,8 +164,6 @@ public class TransactionMacTests
         using var card = Ready(mock, appKey, tmKey);
 
         var access = new NxpscAccessRights(2, 2, 2, 0);
-        card.CreateRecordFile(RecordFile, cyclic: true, NxpscCommMode.Mac, access, 32, 4);
-
         Assert.Equal([RecordFile, TmacFile], card.GetFileIds().Order());
 
         var record = card.GetFileSettings(RecordFile);
@@ -219,6 +218,7 @@ public class TransactionMacTests
         card.SelectApplication(Aid);
         using (var factory = NxpscKey.FactoryAesApplicationKey())
             card.Authenticate(0, factory);
+        card.CreateRecordFile(RecordFile, cyclic: true, NxpscCommMode.Mac, new NxpscAccessRights(2, 2, 2, 0), 32, 4);
 
         card.WriteRecord(RecordFile, 0, Record, NxpscCommMode.Mac);
         Assert.Throws<NxpscException>(() => card.CommitTransactionWithMac());

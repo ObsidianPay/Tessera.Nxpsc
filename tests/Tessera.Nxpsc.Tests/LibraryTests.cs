@@ -28,6 +28,27 @@ public class LibraryTests
         Assert.Equal(expected, Convert.ToHexString(derived.Bytes));
     }
 
+    /// <summary>
+    /// A derived key can leave only through ExportTo, into a buffer the caller
+    /// owns, and not from a key that has been disposed.
+    /// </summary>
+    [Fact]
+    public void A_key_exports_its_bytes_and_nothing_once_disposed()
+    {
+        var bytes = Convert.FromHexString("00112233445566778899AABBCCDDEEFF");
+        var key = new NxpscKey(NxpscKeyType.Aes128, bytes);
+
+        var exported = new byte[16];
+        key.ExportTo(exported);
+        Assert.Equal(bytes, exported);
+
+        Assert.Throws<ArgumentException>(() => key.ExportTo(new byte[15]));
+        Assert.DoesNotContain("0011", key.ToString());
+
+        key.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => key.ExportTo(new byte[16]));
+    }
+
     [Fact]
     public void Diversification_input_over_31_bytes_is_refused()
     {
