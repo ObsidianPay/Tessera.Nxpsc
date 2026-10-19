@@ -9,7 +9,7 @@ API, key handling that zeroes key material, and a PC/SC transport.
 
 | Package | What it is |
 |---|---|
-| `Tessera.Nxpsc` | The binding, the PC/SC transport, and libnxpsc's native library for `win-x64`, `linux-x64` and `osx-arm64` |
+| `Tessera.Nxpsc` | The binding, the PC/SC transport, and libnxpsc's native library for `win-x64`, `linux-x64`, `linux-arm64` and `osx-arm64` |
 | `Tessera.Nxpsc.MockCard` | libnxpsc's mock card with state, for testing code without hardware. Test projects only (see below) |
 
 ## Install
@@ -141,7 +141,7 @@ The tests also check the binding against the library it loads:
 - whole flows against the mock card, with both the ISO-wrapped and the native
   command set.
 
-CI runs all of this on Windows x64, Linux x64 and macOS arm64, packs both
+CI runs all of this on Windows x64, Linux x64, Linux arm64 and macOS arm64, packs both
 packages with every platform's native library, and publishes to GitHub
 Packages.
 

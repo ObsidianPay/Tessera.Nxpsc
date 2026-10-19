@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <PackageId>Tessera.Nxpsc</PackageId>
-    <Description>.NET binding for libnxpsc: MIFARE DESFire (EV1/EV2/EV3, Light), NTAG 413/424 DNA and MIFARE Plus programming, with a PC/SC transport. Ships libnxpsc's native library for win-x64, linux-x64 and osx-arm64.</Description>
+    <Description>.NET binding for libnxpsc: MIFARE DESFire (EV1/EV2/EV3, Light), NTAG 413/424 DNA and MIFARE Plus programming, with a PC/SC transport. Ships libnxpsc's native library for win-x64, linux-x64, linux-arm64 and osx-arm64.</Description>
   </PropertyGroup>
 
   <ItemGroup>

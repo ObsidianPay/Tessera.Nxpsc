@@ -27,6 +27,8 @@ jobs:
             rid: win-x64
           - os: ubuntu-latest
             rid: linux-x64
+          - os: ubuntu-24.04-arm
+            rid: linux-arm64
           - os: macos-latest
             rid: osx-arm64
 
@@ -113,12 +115,12 @@ jobs:
         run: |
           main="packages/Tessera.Nxpsc.${{ steps.version.outputs.version }}.nupkg"
           mock="packages/Tessera.Nxpsc.MockCard.${{ steps.version.outputs.version }}.nupkg"
-          for f in runtimes/win-x64/native/nxpsc.dll runtimes/linux-x64/native/libnxpsc.so runtimes/osx-arm64/native/libnxpsc.dylib \
+          for f in runtimes/win-x64/native/nxpsc.dll runtimes/linux-x64/native/libnxpsc.so runtimes/linux-arm64/native/libnxpsc.so runtimes/osx-arm64/native/libnxpsc.dylib \
                    lib/net8.0/Tessera.Nxpsc.dll LICENSE README.md; do
             unzip -l "$main" | grep -q " $f\$" || { echo "::error::$f missing from $main"; exit 1; }
           done
           for f in runtimes/win-x64/native/nxpsc_mockcard.dll runtimes/linux-x64/native/nxpsc_mockcard.so \
-                   runtimes/osx-arm64/native/nxpsc_mockcard.dylib lib/net8.0/Tessera.Nxpsc.MockCard.dll; do
+                   runtimes/linux-arm64/native/nxpsc_mockcard.so runtimes/osx-arm64/native/nxpsc_mockcard.dylib lib/net8.0/Tessera.Nxpsc.MockCard.dll; do
             unzip -l "$mock" | grep -q " $f\$" || { echo "::error::$f missing from $mock"; exit 1; }
           done
           if unzip -l "$main" | grep -q nxpsc_mockcard; then echo "::error::the mock card leaked into $main"; exit 1; fi
