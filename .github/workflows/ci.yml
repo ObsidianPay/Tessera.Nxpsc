@@ -40,7 +40,13 @@ jobs:
       - name: Build native
         shell: bash
         run: |
-          cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release
+          extra=""
+          # the macOS arm64 runner builds universal (arm64 + x86_64) libraries, which
+          # are staged as both osx-arm64 and osx-x64 (no Intel runner needed)
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            extra="-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
+          fi
+          cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release ${extra:+"$extra"}
           cmake --build native/build --config Release
 
       # the tests run against both runtimes: net8.0 is what the package targets,
@@ -56,6 +62,21 @@ jobs:
       - name: Test
         run: dotnet test Tessera.Nxpsc.sln --configuration Release --logger "console;verbosity=normal"
 
+      # osx-x64 ships the x86_64 slice of the universal build: run the same tests
+      # again in an x64 .NET under Rosetta 2
+      - name: Test the x86_64 slice
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          softwareupdate --install-rosetta --agree-to-license || true
+          curl -fsSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh
+          for channel in 8.0 10.0; do
+            bash dotnet-install.sh --channel "$channel" --architecture x64 --install-dir "$HOME/.dotnet-x64"
+          done
+          export DOTNET_ROOT="$HOME/.dotnet-x64"
+          arch -x86_64 "$DOTNET_ROOT/dotnet" --info | grep -i "architecture"
+          arch -x86_64 "$DOTNET_ROOT/dotnet" test Tessera.Nxpsc.sln --configuration Release --logger "console;verbosity=normal"
+
       - name: Stage runtime files
         shell: bash
         run: |
@@ -65,6 +86,14 @@ jobs:
             # -L: libnxpsc.so and libnxpsc.dylib are symlinks to the versioned file
             if [ -e "native/build/out/$f" ]; then cp -L "native/build/out/$f" "$stage/"; fi
           done
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            for f in "$stage"/*.dylib; do
+              lipo -archs "$f" | grep -q arm64
+              lipo -archs "$f" | grep -q x86_64
+            done
+            mkdir -p stage/osx-x64
+            cp -R "$stage" stage/osx-x64/native
+          fi
           ls -l "$stage"
           test "$(ls "$stage" | wc -l)" -eq 2
 
@@ -115,12 +144,12 @@ jobs:
         run: |
           main="packages/Tessera.Nxpsc.${{ steps.version.outputs.version }}.nupkg"
           mock="packages/Tessera.Nxpsc.MockCard.${{ steps.version.outputs.version }}.nupkg"
-          for f in runtimes/win-x64/native/nxpsc.dll runtimes/linux-x64/native/libnxpsc.so runtimes/linux-arm64/native/libnxpsc.so runtimes/osx-arm64/native/libnxpsc.dylib \
+          for f in runtimes/win-x64/native/nxpsc.dll runtimes/linux-x64/native/libnxpsc.so runtimes/linux-arm64/native/libnxpsc.so runtimes/osx-arm64/native/libnxpsc.dylib runtimes/osx-x64/native/libnxpsc.dylib \
                    lib/net8.0/Tessera.Nxpsc.dll LICENSE README.md; do
             unzip -l "$main" | grep -q " $f\$" || { echo "::error::$f missing from $main"; exit 1; }
           done
           for f in runtimes/win-x64/native/nxpsc_mockcard.dll runtimes/linux-x64/native/nxpsc_mockcard.so \
-                   runtimes/linux-arm64/native/nxpsc_mockcard.so runtimes/osx-arm64/native/nxpsc_mockcard.dylib lib/net8.0/Tessera.Nxpsc.MockCard.dll; do
+                   runtimes/linux-arm64/native/nxpsc_mockcard.so runtimes/osx-arm64/native/nxpsc_mockcard.dylib runtimes/osx-x64/native/nxpsc_mockcard.dylib lib/net8.0/Tessera.Nxpsc.MockCard.dll; do
             unzip -l "$mock" | grep -q " $f\$" || { echo "::error::$f missing from $mock"; exit 1; }
           done
           if unzip -l "$main" | grep -q nxpsc_mockcard; then echo "::error::the mock card leaked into $main"; exit 1; fi
